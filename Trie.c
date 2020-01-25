@@ -2,101 +2,131 @@
 #include <stdlib.h> 
 #include <string.h> 
 #include <stdbool.h>
+#include "Trie.h"
 
 #define ALPHABET 26
-#define ERROR -1
-
-typedef struct TrieNode {
-    char letter;
-    long unsigned int wordsNum;
-    struct TrieNode* children[ALPHABET];
-    bool endWord;
-    int sameWord;
-} TrieNode;
+#define EMPTY -2
+int len = 0;
 
 int toIndex(char ch) {
-    if ((int)ch >= 65 && (int)ch <= 90) return (int)ch - 65; // Upper case --> lower case --> index
-    if ((int)ch >= 97 && (int)ch <= 122) return (int)ch - 97; // Lower case --> index
-    return ERROR; // Invalid char
+    if ((int)ch >= 65 && (int)ch <= 90)
+        return (int)ch - 65; // Upper case to lower case to index
+    if ((int)ch >= 97 && (int)ch <= 122)
+        return (int)ch - 97; // Lower case to index
+    return -1; // Invalid char
 }
 
-TrieNode* createTrieNode() {
-    TrieNode* newNode = NULL;
-    newNode = (TrieNode*)malloc(sizeof(TrieNode));
+bool ifNotLetter(char ch) {
+    if ((int)ch >= 0 && (int)ch <= 32) return true;
+    return false;
+}
 
-    if (newNode) {
-        newNode->endWord = false;
+TrieTree* createTrie() {
+    TrieTree* nTrie = NULL;
+    nTrie = (TrieTree*)malloc(sizeof(TrieTree));
+
+    if (nTrie) {
+        nTrie->endWord = false;
         for (int i = 0; i < ALPHABET; i++)
-            newNode->children[i] = NULL;
+            nTrie->children[i] = NULL;
     }
 
-    return newNode;
+    return nTrie;
 }
 
-void insert(TrieNode* trieRoot, const char *anyWord) {
-    int wordLength = strlen(anyWord);
-    TrieNode* trieNode = trieRoot;
+TrieTree* insert(TrieTree* root, const char letter, int index) {
+    if (root->children[index] == NULL) {
+        root->children[index] = createTrie();
+        root->children[index]->letter = letter;
+    } // Create new TrieTree
 
-    for (int i = 0; i < wordLength; i++) {
-        int indexNum = toIndex(anyWord[i]);
-        if (indexNum != ERROR) {
-            if (i == 0) trieRoot->wordsNum++; // Total amount of inserted words
-            if (trieNode->children[indexNum] == NULL) {
-                trieNode->children[indexNum] = createTrieNode();
-                trieNode->children[indexNum]->letter = anyWord[i];
-            } // Create new TrieNode
-
-            trieNode = trieNode->children[indexNum];
-            if (i == 0) trieNode->wordsNum++; // Increment anyWord's prefix wordsNum
-        } // Invalid index will not be considered
-    }
-
-    if (trieNode->endWord) trieNode->sameWord++; // Check anyWord's existence
-    else {
-        trieNode->endWord = true;
-        trieNode->sameWord = 1;
-    }
+    root = root->children[index];
+    return root;
 }
 
-void Lexicographic(const TrieNode* trieRoot, char outWord[], int indexNum, bool toReverse) {
-    if (trieRoot->endWord) { // Leaf
-        outWord[indexNum] = '\0';
-        printf("%s\t %d\n", outWord, trieRoot->sameWord);
+void Lexicographic(TrieTree* root, char word[len], int num, bool reverse) {
+    if (root->endWord && !reverse) { // Forward
+        word[num] = '\0';
+        if (root->letter != EMPTY)
+            printf("%s\t%d\n", word, root->equalWord);
     }
     
-    int rIndex; // Depends on the bool variable
+    int indexr; // Depends on the bool variable
     for (int i = 0; i < ALPHABET; i++) {
-        if (toReverse) rIndex = ALPHABET - 1 - i; // Reverse
-        else rIndex = i; // Forward
-        if (trieRoot->children[rIndex] != NULL) {
-            outWord[indexNum] = rIndex + 'a';
-            Lexicographic(trieRoot->children[rIndex], outWord, indexNum + 1, toReverse);
+        if (reverse)
+            indexr = ALPHABET - 1 - i; // Reverse
+        else indexr = i; // Forward
+
+        if (root->children[indexr] != NULL) {
+            word[num] = indexr + 'a';
+            Lexicographic(root->children[indexr], word, num + 1, reverse);
         }
+    }
+    
+    if (root->endWord && reverse) { // Reverse
+        word[num] = '\0';
+        if (root->letter != EMPTY)
+            printf("%s\t%d\n", word, root->equalWord);
     }
 }
 
-void print(const TrieNode* trieRoot, bool toReverse) {
-    char outWord[256];
+void print(TrieTree* trieRoot, bool toReverse) {
+    char outWord[len];
     Lexicographic(trieRoot, outWord, 0, toReverse);
 }
 
-void freeMemo(TrieNode* trieRoot) { // Free memory allocation
+void freeMemory(TrieTree* root) { // Free memory allocation
     for (int i = 0; i < ALPHABET; i++)
-        if (trieRoot->children[i] != NULL)
-            freeMemo(trieRoot->children[i]);
+        if (root->children[i] != NULL)
+            freeMemory(root->children[i]);
         
-    free(trieRoot);
+    free(root);
 }
 
-int main(int argc, char **argv) {
-    TrieNode* trieRoot = createTrieNode(); // Create an empty Trie root
-    bool toReverse = false;
-    if (argc == 2) if (!strncmp(argv[1], "r", 1)) toReverse = true;
-    
-    char anyWord[256];
-    while (scanf("%s", anyWord) != EOF) insert(trieRoot, anyWord);
+int main(int argc, char** argv) {
+    TrieTree* root = createTrie(); // Create an empty Trie root
+    root->letter = EMPTY; // root contains no letters at all
+    bool reverse = false;
+    if (argc == 2)
+	if (!strncmp(argv[1], "r", 1))
+        reverse = true;
 
-    print(trieRoot, toReverse);
-    freeMemo(trieRoot);
+    char letter;
+    int num;
+    int leng = 0;
+
+    TrieTree* node = root;
+    while (scanf("%c", &letter) != EOF) {
+        num = toIndex(letter);
+        if (num >= 0 && num <= 25) {
+            node = insert(node, letter, num);
+            leng++;
+            if (leng > len) len = leng;
+        }
+
+        else if (ifNotLetter(letter)) {
+            if (node->endWord)
+                node->equalWord++;
+            else {
+                node->endWord = true;
+                node->equalWord = 1;
+            }
+
+            if (leng > 0)
+                root->NumOfWords++;
+            leng = 0;
+            node = root;
+        }
+    }
+
+    // Reached EOF before updating the last word end
+    if (node->endWord) node->equalWord++;
+    else {
+        node->endWord = true;
+        node->equalWord = 1;
+    }
+
+    print(root, reverse);
+    freeMemory(root);
     return 0;
 }
